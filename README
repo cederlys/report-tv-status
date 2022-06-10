@@ -1,0 +1,10 @@
+The report-tv-status monitors the power consumption (as reported by a
+Shelly plug).  If it is more than 15 W, the TV is on, otherwise off.
+The state is reported to Home Assistant as a binary_sensor.
+
+This requires pyShelly.git:
+
+    git clone git@github.com:StyraHem/pyShelly.git
+    cd pyShelly
+    python3 setup.py build
+    sudo python3 setup.py install

@@ -1,0 +1,69 @@
+#!/usr/bin/env python3
+
+import os
+import sys
+import time
+import requests
+import json
+
+from pyShelly import pyShelly
+
+DEVICE = "6A5B88"
+THRESHOLD = 15.0
+
+URL = "https://fivlered-halltorp.duckdns.org:80/api/states/"
+TOKEN = open(os.path.join(os.getenv("HOME"), ".home-assistant-token")).read().strip()
+SENSOR = "binary_sensor.tv_lkpg_vardagsrum"
+NAME = "TV Lkpg"
+
+shelly = None
+
+def post_state(state):
+    headers = {
+        "Authorization": "Bearer " + TOKEN,
+        "Content-Type": "application/json",
+    }
+    data = {
+        "unique_id": SENSOR,
+        "state": "on" if state else "off",
+        "attributes": {
+            "friendly_name": NAME,
+        }
+    }
+    r = requests.post(URL + SENSOR,
+                      headers=headers, data=json.dumps(data))
+    print(r.text)
+
+old_state = None
+
+def updated(dev):
+    global old_state
+
+    current = dev.info_values_coap.get("current_consumption", 0.0)
+    print(f"Current: {current} W")
+    new_state = current > THRESHOLD
+    if new_state != old_state:
+        print(f"New state: {new_state}")
+        old_state = new_state
+        post_state(new_state)
+
+def device_added(dev, code):
+    if dev.id == DEVICE and dev.device_type == "RELAY":
+        print("found it!")
+        dev.cb_updated.append(updated)
+
+def start():
+    global shelly
+    shelly = pyShelly()
+    shelly.cb_device_added.append(device_added)
+    shelly.start()
+    shelly.discover()
+    while True:
+        try:
+            time.sleep(60)
+        except KeyboardInterrupt:
+            print("Bye!")
+            sys.exit(0)
+
+if __name__ == '__main__':
+    start()
